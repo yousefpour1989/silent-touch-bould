@@ -1,0 +1,631 @@
+name: Build SilentTouch APK
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Generate project files and build
+        run: |mkdir -p SilentTouch/app/src/main/java/com/silenttouch/app/{ui/{theme,screens,components,viewmodel},data/{local,bluetooth,model},util}
+mkdir -p SilentTouch/app/src/main/res/{values,drawable,mipmap-anydpi-v26}
+mkdir -p SilentTouch/gradle/wrapper
+
+# Project-level build.gradle.kts
+cat > SilentTouch/build.gradle.kts << 'GRADLE1'
+plugins {
+    id("com.android.application") version "8.2.2" apply false
+    id("org.jetbrains.kotlin.android") version "1.9.22" apply false
+}
+GRADLE1
+
+# settings.gradle.kts
+cat > SilentTouch/settings.gradle.kts << 'GRADLE2'
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolution {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = "SilentTouch"
+include(":app")
+GRADLE2
+
+# gradle.properties
+cat > SilentTouch/gradle.properties << 'GRADLE3'
+org.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8
+android.useAndroidX=true
+kotlin.code.style=official
+android.nonTransitiveRClass=true
+GRADLE3
+
+# gradle-wrapper.properties
+cat > SilentTouch/gradle/wrapper/gradle-wrapper.properties << 'GRADLE4'
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.5-bin.zip
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+GRADLE4
+
+# App build.gradle.kts
+cat > SilentTouch/app/build.gradle.kts << 'GRADLE5'
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+android {
+    namespace = "com.silenttouch.app"
+    compileSdk = 34
+    defaultConfig {
+        applicationId = "com.silenttouch.app"
+        minSdk = 24
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
+    }
+    buildFeatures { compose = true }
+    composeOptions { kotlinCompilerExtensionVersion = "1.5.8" }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = "17" }
+}
+dependencies {
+    val composeBom = platform("androidx.compose:compose-bom:2024.01.00")
+    implementation(composeBom)
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+    implementation("androidx.activity:activity-compose:1.8.2")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+}
+GRADLE5
+
+# AndroidManifest.xml
+cat > SilentTouch/app/src/main/AndroidManifest.xml << 'MANIFEST'
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="true" />
+    <application
+        android:name=".SilentTouchApp"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true">
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+MANIFEST
+
+# Resources
+cat > SilentTouch/app/src/main/res/values/strings.xml << 'RES1'
+<resources>
+    <string name="app_name">Silent Touch</string>
+</resources>
+RES1cat > SilentTouch/app/src/main/res/drawable/ic_launcher_foreground.xml << 'RES2'
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FF6200EE"
+        android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0" />
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M54,30 L54,78 M30,54 L78,54"
+        android:strokeWidth="6" android:strokeColor="#FFFFFF" />
+</vector>
+RES2
+
+cat > SilentTouch/app/src/main/res/drawable/ic_launcher_background.xml << 'RES3'
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M0,0h108v108h-108z" />
+</vector>
+RES3
+
+cat > SilentTouch/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml << 'RES4'
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background"/>
+    <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+</adaptive-icon>
+RES4
+
+# Now all Kotlin source files
+cat > SilentTouch/app/src/main/java/com/silenttouch/app/SilentTouchApp.kt << 'KT1'
+package com.silenttouch.app
+import android.app.Application
+class SilentTouchApp : Application()
+KT1
+
+cat > SilentTouch/app/src/main/java/com/silenttouch/app/MainActivity.kt << 'KT2'
+package com.silenttouch.app
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
+import com.silenttouch.app.ui.screens.HomeScreen
+import com.silenttouch.app.ui.theme.SilentTouchTheme
+import com.silenttouch.app.ui.viewmodel.MainViewModel
+class MainActivity : ComponentActivity() {
+    private lateinit var viewModel: MainViewModel
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions -> if (permissions.values.all { it }) viewModel.onPermissionsGranted() }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        viewModel = MainViewModel(applicationContext)
+        setContent {
+            SilentTouchTheme {
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { HomeScreen(viewModel) }
+            }
+        }
+        requestBluetoothPermissions()
+    }
+    private fun requestBluetoothPermissions() {
+        val perms = mutableListOf<String>()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) perms.add(Manifest.permission.BLUETOOTH_CONNECT)
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) perms.add(Manifest.permission.BLUETOOTH_SCAN)
+        } else {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED) perms.add(Manifest.permission.BLUETOOTH)
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADMIN) != PackageManager.PERMISSION_GRANTED) perms.add(Manifest.permission.BLUETOOTH_ADMIN)
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) perms.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+        if (perms.isNotEmpty()) requestPermissionLauncher.launch(perms.toTypedArray()) else viewModel.onPermissionsGranted()
+    }
+}
+KT2
+
+cat > SilentTouch/app/src/main/java/com/silenttouch/app/ui/theme/Color.kt << 'KT3'
+package com.silenttouch.app.ui.theme
+import androidx.compose.ui.graphics.Color
+val Purple80 = Color(0xFFD0BCFF)
+val PurpleGrey80 = Color(0xFFCCC2DC)
+val Pink80 = Color(0xFFEFB8C8)
+val Purple40 = Color(0xFF6650a4)
+val PurpleGrey40 = Color(0xFF625b71)
+val Pink40 = Color(0xFF7D5260)
+KT3
+
+cat > SilentTouch/app/src/main/java/com/silenttouch/app/ui/theme/Type.kt << 'KT4'
+package com.silenttouch.app.ui.theme
+import androidx.compose.material3.Typography
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+val Typography = Typography(
+    headlineLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 24.sp),
+    labelLarge = TextStyle(fontWeight = FontWeight.Medium, fontSize = 14.sp)
+)
+KT4
+
+cat > SilentTouch/app/src/main/java/com/silenttouch/app/ui/theme/Theme.kt << 'KT5'
+package com.silenttouch.app.ui.theme
+import android.os.Build
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
+private val DarkColorScheme = darkColorScheme(primary = Purple80, secondary = PurpleGrey80, tertiary = Pink80)
+private val LightColorScheme = lightColorScheme(primary = Purple40, secondary = PurpleGrey40, tertiary = Pink40)
+@Composable
+fun SilentTouchTheme(darkTheme: Boolean = isSystemInDarkTheme(), dynamicColor: Boolean = true, content: @Composable () -> Unit) {
+    val colorScheme = when {
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            val context = LocalContext.current
+            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        }
+        darkTheme -> DarkColorScheme
+        else -> LightColorScheme
+    }
+    MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+}
+KT5
+
+cat > SilentTouch/app/src/main/java/com/silenttouch/app/data/model/VibrationPattern.kt << 'KT6'
+package com.silenttouch.app.data.model
+data class VibrationPattern(val segments: List<VibrationSegment>, val repeat: Boolean = false) {
+    fun toTimingsAndAmplitudes(): Pair<LongArray, IntArray> {
+        val timings = mutableListOf<Long>()
+        val amplitudes = mutableListOf<Int>()
+        for (seg in segments) { timings.add(seg.duration); amplitudes.add(if (seg.isVibrate) 255 else 0) }
+        return timings.toLongArray() to amplitudes.toIntArray()
+    }
+    companion object {
+        val DEFAULT_SHORT = VibrationPattern(listOf(VibrationSegment(200, true)))
+        val DEFAULT_LONG = VibrationPattern(listOf(VibrationSegment(600, true)))
+        val DEFAULT_EMERGENCY = VibrationPattern(listOf(
+            VibrationSegment(300, true), VibrationSegment(100, false),
+            VibrationSegment(300, true), VibrationSegment(100, false),
+            VibrationSegment(300, true)), repeat = true)
+    }
+}
+data class VibrationSegment(val duration: Long, val isVibrate: Boolean)
+KT6
+
+cat > SilentTouch/app/src/main/java/com/silenttouch/app/data/model/ButtonConfig.kt << 'KT7'
+package com.silenttouch.app.data.model
+data class ButtonConfig(val id: Int, val label: String, val vibrationPattern: VibrationPattern)
+KT7cat > SilentTouch/app/src/main/java/com/silenttouch/app/data/bluetooth/BluetoothPacket.kt << 'KT8'
+package com.silenttouch.app.data.bluetooth
+object BluetoothPacket {
+    const val ACK: Byte = 0xFF.toByte()
+    const val HEADER: Byte = 0x7E.toByte()
+    fun isButtonCode(byte: Byte) = byte in 0..9
+}
+KT8
+
+cat > SilentTouch/app/src/main/java/com/silenttouch/app/data/bluetooth/ConnectionState.kt << 'KT9'
+package com.silenttouch.app.data.bluetooth
+sealed class ConnectionState {
+    data object Disconnected : ConnectionState()
+    data object Connecting : ConnectionState()
+    data class Connected(val deviceName: String) : ConnectionState()
+    data class Error(val message: String) : ConnectionState()
+}
+KT9
+
+cat > SilentTouch/app/src/main/java/com/silenttouch/app/data/local/PreferencesManager.kt << 'KT10'
+package com.silenttouch.app.data.local
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.*
+import androidx.datastore.preferences.preferencesDataStore
+import com.silenttouch.app.data.model.ButtonConfig
+import com.silenttouch.app.data.model.VibrationPattern
+import com.silenttouch.app.util.VibrationPatternSerializer
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+class PreferencesManager(private val context: Context) {
+    companion object {
+        private val KEY_TARGET_DEVICE_ADDRESS = stringPreferencesKey("target_device_address")
+        private val KEY_DELIVERY_CONFIRMATION = booleanPreferencesKey("delivery_confirmation")
+    }
+    val targetDeviceAddress: Flow<String?> = context.dataStore.data.map { it[KEY_TARGET_DEVICE_ADDRESS] }
+    val deliveryConfirmation: Flow<Boolean> = context.dataStore.data.map { it[KEY_DELIVERY_CONFIRMATION] ?: false }
+    suspend fun setTargetDeviceAddress(address: String) { context.dataStore.edit { it[KEY_TARGET_DEVICE_ADDRESS] = address } }
+    suspend fun setDeliveryConfirmation(enabled: Boolean) { context.dataStore.edit { it[KEY_DELIVERY_CONFIRMATION] = enabled } }
+    suspend fun saveButtonConfig(id: Int, label: String, pattern: VibrationPattern) {
+        context.dataStore.edit { prefs ->
+            prefs[stringPreferencesKey("btn_label_$id")] = label
+            prefs[stringPreferencesKey("btn_pattern_$id")] = VibrationPatternSerializer.serialize(pattern)
+        }
+    }
+    fun loadButtonConfigs(): Flow<List<ButtonConfig>> {
+        return context.dataStore.data.map { prefs ->
+            (0..9).map { id ->
+                val label = prefs[stringPreferencesKey("btn_label_$id")] ?: getDefaultLabel(id)
+                val patternStr = prefs[stringPreferencesKey("btn_pattern_$id")]
+                val pattern = if (patternStr != null) VibrationPatternSerializer.deserialize(patternStr) else getDefaultPattern(id)
+                ButtonConfig(id, label, pattern)
+            }
+        }
+    }
+    private fun getDefaultLabel(id: Int): String = when(id) {
+        0 -> "Look at me"; 1 -> "Yes"; 2 -> "No"; 3 -> "Come here"; 4 -> "OK"; 5 -> "Emergency"
+        6 -> "Custom 1"; 7 -> "Custom 2"; 8 -> "Custom 3"; 9 -> "Custom 4"; else -> "Btn $id"
+    }
+    private fun getDefaultPattern(id: Int): VibrationPattern = if (id == 5) VibrationPattern.DEFAULT_EMERGENCY else VibrationPattern.DEFAULT_SHORT
+}
+KT10
+
+cat > SilentTouch/app/src/main/java/com/silenttouch/app/util/VibrationPatternSerializer.kt << 'KT11'
+package com.silenttouch.app.util
+import com.silenttouch.app.data.model.VibrationPattern
+import com.silenttouch.app.data.model.VibrationSegment
+object VibrationPatternSerializer {
+    fun serialize(pattern: VibrationPattern): String {
+        val segs = pattern.segments.joinToString(";") { "${it.duration},${if (it.isVibrate) 1 else 0}" }
+        return "$segs|${if (pattern.repeat) 1 else 0}"
+    }
+    fun deserialize(str: String): VibrationPattern {
+        val parts = str.split("|")
+        val segments = if (parts[0].isNotEmpty()) {
+            parts[0].split(";").map { val pair = it.split(","); VibrationSegment(pair[0].toLong(), pair[1] == "1") }
+        } else emptyList()
+        val repeat = parts.getOrElse(1) { "0" } == "1"
+        return VibrationPattern(segments, repeat)
+    }
+}
+KT11cat > SilentTouch/app/src/main/java/com/silenttouch/app/data/bluetooth/BluetoothManager.kt << 'KT12'
+package com.silenttouch.app.data.bluetooth
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothServerSocket
+import android.bluetooth.BluetoothSocket
+import android.content.Context
+import android.os.PowerManager
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import java.io.IOException
+import java.util.UUID
+class BluetoothManager(private val context: Context) {
+    companion object { private val MY_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"); private const val CONNECTION_TIMEOUT_MS = 5000L }
+    private val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
+    private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
+    val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
+    private var serverSocket: BluetoothServerSocket? = null
+    private var connectedSocket: BluetoothSocket? = null
+    private var inputStream: java.io.InputStream? = null
+    private var outputStream: java.io.OutputStream? = null
+    private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var acceptJob: Job? = null; private var connectJob: Job? = null; private var readJob: Job? = null
+    private var targetDevice: BluetoothDevice? = null; private var listener: Listener? = null
+    private var wakelock: PowerManager.WakeLock? = null
+    interface Listener { fun onButtonReceived(buttonId: Int); fun onAckReceived(); fun onConnectionLost() }
+    fun setListener(listener: Listener?) { this.listener = listener }
+    fun setTargetDevice(device: BluetoothDevice) { targetDevice = device }
+    fun start() {
+        if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) { _connectionState.value = ConnectionState.Error("Bluetooth off"); return }
+        wakelock = (context.getSystemService(Context.POWER_SERVICE) as PowerManager).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SilentTouch:BT").apply { acquire() }
+        startServer(); startClientIfNeeded()
+    }
+    fun stop() { disconnect(); wakelock?.let { if (it.isHeld) it.release() }; wakelock = null }
+    private fun startServer() { acceptJob = ioScope.launch { try { serverSocket = bluetoothAdapter?.listenUsingRfcommWithServiceRecord("SilentTouch", MY_UUID); while (isActive) { val socket = serverSocket?.accept(); socket?.let { if (connectedSocket == null) { connectToSocket(it, it.remoteDevice.name ?: "Unknown"); cancelClientAttempt() } else it.close() } } } catch (e: IOException) {} } }
+    private fun startClientIfNeeded() { targetDevice?.let { device -> connectJob = ioScope.launch { try { _connectionState.value = ConnectionState.Connecting; val socket = withTimeoutOrNull(CONNECTION_TIMEOUT_MS) { device.createRfcommSocketToServiceRecord(MY_UUID).apply { connect() } }; if (socket != null && isActive) connectToSocket(socket, device.name ?: "Unknown") else _connectionState.value = ConnectionState.Error("Connection timeout") } catch (e: IOException) { _connectionState.value = ConnectionState.Error("Connection failed") } } } }
+    private fun connectToSocket(socket: BluetoothSocket, deviceName: String) { disconnectSocket(); connectedSocket = socket; inputStream = socket.inputStream; outputStream = socket.outputStream; _connectionState.value = ConnectionState.Connected(deviceName); startReading(); serverSocket?.close(); serverSocket = null }
+    private fun startReading() { readJob = ioScope.launch { try { val buffer = ByteArray(1); while (isActive) { val bytesRead = inputStream?.read(buffer) ?: -1; if (bytesRead == -1) throw IOException("Stream ended"); val byte = buffer[0]; if (byte == BluetoothPacket.ACK) withContext(Dispatchers.Main) { listener?.onAckReceived() } else if (BluetoothPacket.isButtonCode(byte)) { withContext(Dispatchers.Main) { listener?.onButtonReceived(byte.toInt()) }; sendAck() } } } catch (e: IOException) { withContext(Dispatchers.Main) { _connectionState.value = ConnectionState.Disconnected; listener?.onConnectionLost() } } } }
+    private fun sendAck() { ioScope.launch { try { outputStream?.write(BluetoothPacket.ACK.toInt()); outputStream?.flush() } catch (_: Exception) {} } }
+    fun sendButtonSignal(buttonId: Int) { if (outputStream == null) return; ioScope.launch { try { outputStream?.write(buttonId); outputStream?.flush() } catch (_: IOException) {} } }
+    private fun cancelClientAttempt() { connectJob?.cancel() }
+    fun disconnect() { ioScope.coroutineContext.cancelChildren(); disconnectSocket(); serverSocket?.close(); serverSocket = null; _connectionState.value = ConnectionState.Disconnected }
+    private fun disconnectSocket() { try { connectedSocket?.close() } catch (_: Exception) {}; connectedSocket = null; inputStream = null; outputStream = null }
+}
+KT12
+
+cat > SilentTouch/app/src/main/java/com/silenttouch/app/ui/viewmodel/MainViewModel.kt << 'KT13'
+package com.silenttouch.app.ui.viewmodel
+import android.app.Application
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.silenttouch.app.data.bluetooth.BluetoothManager
+import com.silenttouch.app.data.bluetooth.ConnectionState
+import com.silenttouch.app.data.local.PreferencesManager
+import com.silenttouch.app.data.model.ButtonConfig
+import com.silenttouch.app.data.model.VibrationPattern
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+class MainViewModel(application: Application) : AndroidViewModel(application) {
+    private val prefs = PreferencesManager(application)
+    private val bluetoothManager = BluetoothManager(application)
+    val connectionState: StateFlow<ConnectionState> = bluetoothManager.connectionState
+    val deliveryConfirmation: StateFlow<Boolean> = prefs.deliveryConfirmation.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val buttonConfigs: StateFlow<List<ButtonConfig>> = prefs.loadButtonConfigs().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    private val vibrator: Vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        (application.getSystemService(VibratorManager::class.java)).defaultVibrator
+    } else { @Suppress("DEPRECATION") application.getSystemService(android.content.Context.VIBRATOR_SERVICE) as Vibrator }
+    private val _showVibrationEditor = MutableStateFlow<ButtonConfig?>(null)
+    val showVibrationEditor: StateFlow<ButtonConfig?> = _showVibrationEditor.asStateFlow()
+    init {
+        bluetoothManager.setListener(object : BluetoothManager.Listener {
+            override fun onButtonReceived(buttonId: Int) { buttonConfigs.value.find { it.id == buttonId }?.let { playVibration(it.vibrationPattern) } }
+            override fun onAckReceived() { if (deliveryConfirmation.value) playVibration(VibrationPattern(listOf(com.silenttouch.app.data.model.VibrationSegment(50, true)))) }
+            override fun onConnectionLost() {
+                bluetoothManager.stop()
+                viewModelScope.launch {
+                    prefs.targetDeviceAddress.collectLatest { addr ->
+                        if (addr != null) {
+                            val device = BluetoothAdapter.getDefaultAdapter()?.getRemoteDevice(addr)
+                            if (device != null) { bluetoothManager.setTargetDevice(device); bluetoothManager.start() }
+                        }
+                    }
+                }
+            }
+        })
+    }
+    fun onPermissionsGranted() {
+        viewModelScope.launch {
+            prefs.targetDeviceAddress.collectLatest { addr ->
+                if (addr != null) {
+                    val device = BluetoothAdapter.getDefaultAdapter()?.getRemoteDevice(addr)
+                    if (device != null) { bluetoothManager.setTargetDevice(device); bluetoothManager.start() }
+                }
+            }
+        }
+    }
+    fun connectToDevice(device: BluetoothDevice) { viewModelScope.launch { prefs.setTargetDeviceAddress(device.address); bluetoothManager.setTargetDevice(device); bluetoothManager.start() } }
+    fun disconnect() { bluetoothManager.stop() }
+    fun sendSignal(buttonId: Int) { bluetoothManager.sendButtonSignal(buttonId) }
+    fun setDeliveryConfirmation(enabled: Boolean) { viewModelScope.launch { prefs.setDeliveryConfirmation(enabled) } }
+    fun openVibrationEditor(config: ButtonConfig) { _showVibrationEditor.value = config }
+    fun closeVibrationEditor() { _showVibrationEditor.value = null }
+    fun saveButtonConfig(buttonId: Int, label: String, pattern: VibrationPattern) { viewModelScope.launch { prefs.saveButtonConfig(buttonId, label, pattern) } }
+    private fun playVibration(pattern: VibrationPattern) {
+        val (timings, amplitudes) = pattern.toTimingsAndAmplitudes()
+        if (timings.isEmpty()) return
+        vibrator.vibrate(VibrationEffect.createWaveform(timings, amplitudes, if (pattern.repeat) 0 else -1))
+    }
+    override fun onCleared() { super.onCleared(); bluetoothManager.stop() }
+}
+KT13cat > SilentTouch/app/src/main/java/com/silenttouch/app/ui/components/ConnectionStatusBar.kt << 'KT14'
+package com.silenttouch.app.ui.components
+import androidx.compose.foundation.layout.Row; import androidx.compose.foundation.layout.Spacer; import androidx.compose.foundation.layout.padding; import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons; import androidx.compose.material.icons.filled.Bluetooth; import androidx.compose.material.icons.filled.BluetoothDisabled; import androidx.compose.material.icons.filled.BluetoothSearching
+import androidx.compose.material3.*; import androidx.compose.runtime.Composable; import androidx.compose.ui.Alignment; import androidx.compose.ui.Modifier; import androidx.compose.ui.unit.dp
+import com.silenttouch.app.data.bluetooth.ConnectionState
+@Composable
+fun ConnectionStatusBar(state: ConnectionState, modifier: Modifier = Modifier) {
+    val (icon, text, color) = when (state) {
+        is ConnectionState.Connected -> Triple(Icons.Default.Bluetooth, "Connected to ${state.deviceName}", MaterialTheme.colorScheme.primary)
+        ConnectionState.Connecting -> Triple(Icons.Default.BluetoothSearching, "Connecting…", MaterialTheme.colorScheme.tertiary)
+        ConnectionState.Disconnected -> Triple(Icons.Default.BluetoothDisabled, "Disconnected", MaterialTheme.colorScheme.onSurfaceVariant)
+        is ConnectionState.Error -> Triple(Icons.Default.BluetoothDisabled, state.message, MaterialTheme.colorScheme.error)
+    }
+    Surface(modifier = modifier, color = color.copy(alpha = 0.1f), shape = MaterialTheme.shapes.small) {
+        Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = color); Spacer(modifier = Modifier.width(8.dp)); Text(text, color = color, style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+KT14
+
+cat > SilentTouch/app/src/main/java/com/silenttouch/app/ui/components/ButtonGrid.kt << 'KT15'
+package com.silenttouch.app.ui.components
+import androidx.compose.foundation.layout.*; import androidx.compose.foundation.lazy.grid.GridCells; import androidx.compose.foundation.lazy.grid.LazyVerticalGrid; import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.material3.*; import androidx.compose.runtime.*; import androidx.compose.ui.Alignment; import androidx.compose.ui.Modifier; import androidx.compose.ui.unit.dp
+import com.silenttouch.app.data.model.ButtonConfig
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ButtonGrid(buttons: List<ButtonConfig>, onButtonClick: (ButtonConfig) -> Unit, onButtonLongPress: (ButtonConfig) -> Unit, modifier: Modifier = Modifier) {
+    LazyVerticalGrid(columns = GridCells.Fixed(2), contentPadding = PaddingValues(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp), modifier = modifier.fillMaxSize()) {
+        itemsIndexed(buttons) { _, button -> ButtonItem(label = button.label, onClick = { onButtonClick(button) }, onLongClick = { onButtonLongPress(button) }) }
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ButtonItem(label: String, onClick: () -> Unit, onLongClick: () -> Unit) {
+    Card(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp), shape = MaterialTheme.shapes.extraLarge, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            Text(text = label, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.padding(8.dp))
+        }
+    }
+}
+KT15
+
+cat > SilentTouch/app/src/main/java/com/silenttouch/app/ui/screens/VibrationEditorScreen.kt << 'KT16'
+package com.silenttouch.app.ui.screens
+import androidx.compose.foundation.*; import androidx.compose.foundation.layout.*; import androidx.compose.foundation.lazy.LazyRow; import androidx.compose.foundation.lazy.itemsIndexed; import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*; import androidx.compose.runtime.*; import androidx.compose.ui.Alignment; import androidx.compose.ui.Modifier; import androidx.compose.ui.draw.clip; import androidx.compose.ui.platform.LocalContext; import androidx.compose.ui.unit.dp
+import com.silenttouch.app.data.model.ButtonConfig; import com.silenttouch.app.data.model.VibrationPattern; import com.silenttouch.app.data.model.VibrationSegment
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun VibrationEditorScreen(config: ButtonConfig, onDismiss: () -> Unit, onSave: (ButtonConfig, VibrationPattern) -> Unit) {
+    var label by remember { mutableStateOf(config.label) }; var segments by remember { mutableStateOf(config.vibrationPattern.segments) }; var repeat by remember { mutableStateOf(config.vibrationPattern.repeat) }
+    val updatedPattern = VibrationPattern(segments, repeat)
+    Scaffold(
+        topBar = { TopAppBar(title = { Text("Edit ${config.label}") }, navigationIcon = { TextButton(onClick = onDismiss) { Text("Cancel") } }, actions = { TextButton(onClick = { onSave(config.copy(label = label), updatedPattern) }) { Text("Save") } }) }
+    ) { padding ->
+        Column(modifier = Modifier.padding(padding).padding(16.dp).verticalScroll(rememberScrollState())) {
+            OutlinedTextField(value = label, onValueChange = { label = it }, label = { Text("Button Label") }, modifier = Modifier.fillMaxWidth())
+            Spacer(modifier = Modifier.height(16.dp)); Text("Vibration Pattern", style = MaterialTheme.typography.titleMedium); Spacer(modifier = Modifier.height(8.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth().height(40.dp)) {
+                itemsIndexed(segments) { _, seg -> Box(modifier = Modifier.width((seg.duration / 10).dp.coerceAtLeast(4.dp)).fillMaxHeight().clip(RoundedCornerShape(4.dp)).background(if (seg.isVibrate) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)) }
+            }
+            Spacer(modifier = Modifier.height(12.dp)); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { segments = segments + VibrationSegment(200, true) }) { Text("Short") }
+                Button(onClick = { segments = segments + VibrationSegment(600, true) }) { Text("Long") }
+                Button(onClick = { segments = segments + VibrationSegment(300, false) }) { Text("Pause") }
+                Button(onClick = { if (segments.isNotEmpty()) segments = segments.dropLast(1) }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Del") }
+            }
+            Spacer(modifier = Modifier.height(12.dp)); Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = repeat, onCheckedChange = { repeat = it }); Text("Repeat") }
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(onClick = {
+                val vibrator = LocalContext.current.getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator
+                val (timings, amps) = updatedPattern.toTimingsAndAmplitudes()
+                vibrator.vibrate(android.os.VibrationEffect.createWaveform(timings, amps, if (repeat) 0 else -1))
+            }, modifier = Modifier.fillMaxWidth()) { Text("Preview") }
+        }
+    }
+}
+KT16
+
+cat > SilentTouch/app/src/main/java/com/silenttouch/app/ui/screens/HomeScreen.kt << 'KT17'
+package com.silenttouch.app.ui.screens
+import android.bluetooth.BluetoothAdapter; import android.bluetooth.BluetoothDevice
+import androidx.compose.foundation.layout.*; import androidx.compose.material.icons.Icons; import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.*; import androidx.compose.runtime.*; import androidx.compose.ui.Alignment; import androidx.compose.ui.Modifier; import androidx.compose.ui.unit.dp
+import com.silenttouch.app.data.bluetooth.ConnectionState; import com.silenttouch.app.data.model.ButtonConfig; import com.silenttouch.app.ui.components.ButtonGrid; import com.silenttouch.app.ui.components.ConnectionStatusBar; import com.silenttouch.app.ui.viewmodel.MainViewModel
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeScreen(viewModel: MainViewModel) {
+    val connectionState by viewModel.connectionState.collectAsState()
+    val buttonConfigs by viewModel.buttonConfigs.collectAsState()
+    val deliveryConfirmation by viewModel.deliveryConfirmation.collectAsState()
+    val showEditor by viewModel.showVibrationEditor.collectAsState()
+    var showDevicePicker by remember { mutableStateOf(false) }; var showSettings by remember { mutableStateOf(false) }
+    if (showDevicePicker) DevicePickerDialog(onDismiss = { showDevicePicker = false }, onDeviceSelected = { viewModel.connectToDevice(it); showDevicePicker = false })
+    showEditor?.let { config -> VibrationEditorScreen(config = config, onDismiss = { viewModel.closeVibrationEditor() }, onSave = { updatedConfig, pattern -> viewModel.saveButtonConfig(updatedConfig.id, updatedConfig.label, pattern); viewModel.closeVibrationEditor() }) }
+    if (showSettings) AlertDialog(
+        onDismissRequest = { showSettings = false }, title = { Text("Settings") },
+        text = { Column {
+            Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = deliveryConfirmation, onCheckedChange = { viewModel.setDeliveryConfirmation(it) }); Text("Delivery confirmation vibration") }
+            Button(onClick = { viewModel.disconnect(); showDevicePicker = true; showSettings = false }) { Text("Change paired device") }
+        } },
+        confirmButton = { TextButton(onClick = { showSettings = false }) { Text("Close") } }
+    )
+    Scaffold(
+        topBar = { TopAppBar(title = { Text("Silent Touch") }, actions = { IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "Settings") } }) }
+    ) { padding ->
+        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            ConnectionStatusBar(state = connectionState, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            if (connectionState !is ConnectionState.Connected) Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { Button(onClick = { showDevicePicker = true }) { Text("Connect to Device") } }
+            ButtonGrid(buttons = buttonConfigs, onButtonClick = { viewModel.sendSignal(it.id) }, onButtonLongPress = { viewModel.openVibrationEditor(it) })
+        }
+    }
+}
+@Composable
+fun DevicePickerDialog(onDismiss: () -> Unit, onDeviceSelected: (BluetoothDevice) -> Unit) {
+    val devices = remember { BluetoothAdapter.getDefaultAdapter()?.bondedDevices?.toList() ?: emptyList() }
+    AlertDialog(
+        onDismissRequest = onDismiss, title = { Text("Select paired device") },
+        text = { if (devices.isEmpty()) Text("No paired devices. Pair via Bluetooth settings first.") else Column { devices.forEach { device -> TextButton(onClick = { onDeviceSelected(device) }, modifier = Modifier.fillMaxWidth()) { Text(device.name ?: device.address) } } } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+KT17- name: Setup Gradle wrapper
+  run: cd SilentTouch && gradle wrapper --gradle-version 8.5
+
+- name: Build APK
+  run: cd SilentTouch && ./gradlew assembleDebug
+
+- name: Upload APK
+  uses: actions/upload-artifact@v4
+  with:
+    name: SilentTouch-debug
+    path: SilentTouch/app/build/outputs/apk/debug/app-debug.apk
